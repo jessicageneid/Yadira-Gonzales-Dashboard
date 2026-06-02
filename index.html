@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yadira — GeneID Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+function toggleHS(rowId, facRow) {
+  var panel = document.getElementById(rowId);
+  if (!panel) return;
+  var isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  facRow.classList.toggle('expanded', !isOpen);
+}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 50%,#FDF4FF 100%);min-height:100vh;color:#0F172A}
+.topbar{background:linear-gradient(135deg,#1E3A5F 0%,#DC2626 100%);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 20px rgba(0,0,0,.25)}
+.topbar-left h1{font-size:16px;font-weight:700;color:#fff;margin-bottom:2px}
+.topbar-left p{font-size:11px;color:rgba(255,255,255,.6)}
+.topbar-right{text-align:right}
+.topbar-right .big-num{font-size:28px;font-weight:700;color:#fff;line-height:1}
+.topbar-right .big-lbl{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em}
+.wrap{max-width:1140px;margin:0 auto;padding:24px 20px}
+.nav{display:flex;gap:2px;border-bottom:2px solid #E2E8F0;margin-bottom:20px;background:#fff;border-radius:12px 12px 0 0;padding:6px 6px 0;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.ntab{padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:#64748B;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:8px 8px 0 0;transition:all .2s}
+.ntab.on{color:#DC2626;border-bottom-color:#DC2626;background:#DC262618}
+.ntab:hover:not(.on){color:#DC2626;background:#F8FAFF}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#DC2626}
+.kl{font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:600}
+.kv{font-size:23px;font-weight:700;line-height:1.1;color:#0F172A}
+.ks{font-size:10px;color:#94A3B8;margin-top:3px}
+.card{background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:16px 18px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.ct{font-size:12px;font-weight:700;color:#0F172A;margin-bottom:12px;letter-spacing:.01em}
+.cw{position:relative;width:100%}
+.leg{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:#64748B;margin-bottom:10px;font-weight:500}
+.lsq{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:3px;vertical-align:middle}
+.section-label{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 10px;display:flex;align-items:center;gap:6px}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#CBD5E1,transparent)}
+.bright-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.bright-tbl thead tr{background:linear-gradient(135deg,#1E3A5F,#DC2626)}
+.bright-tbl th{text-align:left;padding:8px 10px;font-weight:700;color:#fff;border:none;font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.bright-tbl td{padding:7px 10px;border-bottom:1px solid #F1F5F9;color:#0F172A;white-space:nowrap}
+.bright-tbl tbody tr:hover td{background:#EFF6FF}
+.bright-tbl tfoot td{border-top:2px solid #BFDBFE}
+.rh{text-align:left;font-weight:600;color:#374151;background:#F8FAFC;border-right:2px solid #E2E8F0;min-width:160px}
+.tc{text-align:right}.fw{font-weight:700}
+.row-alt td{background:#FAFBFF}
+.tblwrap{overflow-x:auto}
+.dip-badge{display:inline-flex;align-items:center;font-size:9px;padding:3px 8px;border-radius:20px;background:#FEE2E2;color:#DC2626;font-weight:700;margin-top:6px;border:1px solid #FECACA}
+.alert-box{background:linear-gradient(135deg,#FFF5F5,#FEF2F2);border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px}
+.alert-box .icon{font-size:15px;line-height:1.6}
+.alert-box .txt{font-size:11px;color:#1C1917;line-height:1.6}
+@media(max-width:700px){.g4{grid-template-columns:1fr 1fr}.g2,.g3{grid-template-columns:1fr}}
+
+.hs-toggle-row { display: none; }
+.hs-toggle-row.open { display: table-row; }
+.fac-expandable { cursor: pointer; user-select: none; }
+.fac-expandable:hover td { background: #EFF6FF !important; }
+.hs-chevron { display: inline-block; margin-left: 6px; font-size: 10px; color: #A16207; transition: transform .2s; }
+.fac-expandable.expanded .hs-chevron { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>📊 Yadira Gonzales</h1>
+    <p>Account Manager &nbsp;·&nbsp; GeneID Performance Dashboard &nbsp;·&nbsp; Jan–May 2026</p>
+  </div>
+  <div class="topbar-right">
+    <div class="big-num">57.3%</div>
+    <div class="big-lbl">Approval rate</div>
+  </div>
+</div>
+<div class="wrap">
+<div class="nav">
+  <button class="ntab on" onclick="go('ov')">Overview</button>
+  <button class="ntab" onclick="go('gts')">GTS Reps</button>
+  <button class="ntab" onclick="go('fac')">Facilities</button>
+  <button class="ntab" onclick="go('pay')">Payers</button>
+</div>
+
+<!-- OVERVIEW -->
+<div id="p-ov">
+  <div class="g4">
+    <div class="kpi"><div class="kl">Total received</div><div class="kv">1,135</div><div class="ks">LIS submissions YTD</div></div>
+    <div class="kpi"><div class="kl">Total approved</div><div class="kv" style="color:#059669">650</div><div class="ks">Jan–May 2026</div></div>
+    <div class="kpi"><div class="kl">GTS reps</div><div class="kv">12</div><div class="ks">Active in portfolio</div></div>
+    <div class="kpi"><div class="kl">Facilities</div><div class="kv">10</div><div class="ks">Across 1 state</div></div>
+  </div>
+  <div class="alert-box"><span class="icon">⚠️</span><span class="txt"><strong>Productivity dip in Apr (-24.8%):</strong> Submissions dropped vs prior month. Review GTS attendance and facility access.</span></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ct">Monthly volume — submissions &amp; approvals</div>
+      <div class="leg"><span><span class="lsq" style="background:#DC262655"></span>Received</span><span><span class="lsq" style="background:#DC2626"></span>Approved</span></div>
+      <div class="cw" style="height:210px"><canvas id="c-trend"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Product mix — approved submissions</div>
+      <div id="pm-leg" class="leg"></div>
+      <div class="cw" style="height:190px"><canvas id="c-pmix"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">Approval rate trend — Jan to May 2026</div>
+    <div class="cw" style="height:160px"><canvas id="c-rate"></canvas></div>
+  </div>
+  <div class="section-label">Month-by-month performance</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="tblwrap">
+    <table class="bright-tbl">
+      <thead><tr>
+        <th class="rh">Month</th><th class="tc">Received</th><th class="tc">Approved</th>
+        <th class="tc">Rate</th><th class="tc">NBP</th><th class="tc">PVT</th><th class="tc">PGX</th>
+        <th class="tc">GTS Active</th><th class="tc">Facilities</th><th class="tc">vs prev</th>
+      </tr></thead>
+      <tfoot><tr style="background:linear-gradient(90deg,#EFF6FF,#F0FDF4)">
+          <td class="rh fw" style="color:#1E40AF">TOTAL</td>
+          <td class="tc fw">1,135</td><td class="tc fw" style="color:#059669">650</td>
+          <td class="tc fw" style="color:#059669">57.3%</td>
+          <td class="tc fw">660</td><td class="tc fw">355</td><td class="tc fw">120</td>
+          <td class="tc">—</td><td class="tc">—</td><td class="tc">—</td>
+        </tr></tfoot><tbody><tr class=""><td class="rh">Jan</td>
+                  <td class="tc">142</td>
+                  <td class="tc" style="color:#059669;font-weight:600">72</td>
+                  <td class="tc" style="color:#D97706;font-weight:700">50.7%</td>
+                  <td class="tc">81</td><td class="tc">44</td><td class="tc">17</td>
+                  <td class="tc">8</td><td class="tc">7</td>
+                  <td class="tc"></td></tr><tr class="row-alt"><td class="rh">Feb</td>
+                  <td class="tc">293</td>
+                  <td class="tc" style="color:#059669;font-weight:600">165</td>
+                  <td class="tc" style="color:#059669;font-weight:700">56.3%</td>
+                  <td class="tc">171</td><td class="tc">93</td><td class="tc">29</td>
+                  <td class="tc">9</td><td class="tc">8</td>
+                  <td class="tc"><span style="color:#059669;font-size:9px;font-weight:700">▲106%</span></td></tr><tr class=""><td class="rh">Mar</td>
+                  <td class="tc">262</td>
+                  <td class="tc" style="color:#059669;font-weight:600">161</td>
+                  <td class="tc" style="color:#059669;font-weight:700">61.5%</td>
+                  <td class="tc">163</td><td class="tc">79</td><td class="tc">20</td>
+                  <td class="tc">8</td><td class="tc">8</td>
+                  <td class="tc"><span style="color:#DC2626;font-size:9px;font-weight:700">▼11%</span></td></tr><tr class="row-alt"><td class="rh" style="color:#DC2626;font-weight:700">Apr ⚠️</td>
+                  <td class="tc" style="color:#DC2626;font-weight:700">197</td>
+                  <td class="tc" style="color:#059669;font-weight:600">117</td>
+                  <td class="tc" style="color:#059669;font-weight:700">59.4%</td>
+                  <td class="tc">112</td><td class="tc">64</td><td class="tc">21</td>
+                  <td class="tc">10</td><td class="tc">8</td>
+                  <td class="tc"><span style="color:#DC2626;font-size:9px;font-weight:700">▼25%</span></td></tr><tr class=""><td class="rh">May</td>
+                  <td class="tc">241</td>
+                  <td class="tc" style="color:#059669;font-weight:600">135</td>
+                  <td class="tc" style="color:#059669;font-weight:700">56.0%</td>
+                  <td class="tc">133</td><td class="tc">75</td><td class="tc">33</td>
+                  <td class="tc">9</td><td class="tc">9</td>
+                  <td class="tc"><span style="color:#059669;font-size:9px;font-weight:700">▲22%</span></td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- GTS REPS -->
+<div id="p-gts" style="display:none">
+  <div class="section-label">GTS reps — performance by rep</div>
+  <div class="g2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="ct">Volume by GTS rep</div>
+      <div class="cw" style="height:220px"><canvas id="c-gts-bar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Approval rate by GTS rep</div>
+      <div class="cw" style="height:220px"><canvas id="c-gts-rate"></canvas></div>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="tblwrap">
+    <table class="bright-tbl">
+      <thead><tr>
+        <th class="rh">GTS Rep</th><th class="tc">Received</th><th class="tc">Approved</th>
+        <th class="tc">Rate</th><th class="tc">Share</th>
+        <th class="tc">Jan</th><th class="tc">Feb</th><th class="tc">Mar</th><th class="tc">Apr</th><th class="tc">May</th>
+      </tr></thead>
+      <tfoot><tr style="background:linear-gradient(90deg,#EFF6FF,#F0FDF4)">
+          <td class="rh fw" style="color:#1E40AF">TOTAL</td>
+          <td class="tc fw">1,135</td><td class="tc fw" style="color:#059669">650</td>
+          <td class="tc fw" style="color:#059669">57.3%</td>
+          <td class="tc fw">—</td>
+          <td class="tc fw"></td><td class="tc fw"></td><td class="tc fw"></td><td class="tc fw"></td><td class="tc fw"></td>
+        </tr></tfoot><tbody><tr class="">
+              <td class="rh fw">Selena Lopez</td>
+              <td class="tc fw" style="color:#1E40AF">259</td>
+              <td class="tc" style="color:#059669">160</td>
+              <td class="tc fw" style="color:#059669">61.8%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:23%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">23%</span>
+              </div></td>
+              <td class="tc" style="color:#059669;font-weight:600">36</td><td class="tc" style="color:#D97706;font-weight:600">64</td><td class="tc" style="color:#059669;font-weight:600">71</td><td class="tc" style="color:#059669;font-weight:600">43</td><td class="tc" style="color:#059669;font-weight:600">45</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Mika Vento</td>
+              <td class="tc fw" style="color:#1E40AF">167</td>
+              <td class="tc" style="color:#059669">103</td>
+              <td class="tc fw" style="color:#059669">61.7%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:15%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">15%</span>
+              </div></td>
+              <td class="tc" style="color:#D97706;font-weight:600">2</td><td class="tc" style="color:#059669;font-weight:600">78</td><td class="tc" style="color:#D97706;font-weight:600">51</td><td class="tc" style="color:#059669;font-weight:600">35</td><td class="tc" style="color:#DC2626;font-weight:600">1</td>
+            </tr><tr class="">
+              <td class="rh fw">Jocelyn Aleman</td>
+              <td class="tc fw" style="color:#1E40AF">134</td>
+              <td class="tc" style="color:#059669">69</td>
+              <td class="tc fw" style="color:#D97706">51.5%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:12%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">12%</span>
+              </div></td>
+              <td class="tc" style="color:#D97706;font-weight:600">23</td><td class="tc" style="color:#059669;font-weight:600">23</td><td class="tc" style="color:#059669;font-weight:600">36</td><td class="tc" style="color:#D97706;font-weight:600">25</td><td class="tc" style="color:#DC2626;font-weight:600">27</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Maria Lopez</td>
+              <td class="tc fw" style="color:#1E40AF">130</td>
+              <td class="tc" style="color:#059669">76</td>
+              <td class="tc fw" style="color:#059669">58.5%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:11%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">11%</span>
+              </div></td>
+              <td class="tc" style="color:#DC2626;font-weight:600">29</td><td class="tc" style="color:#059669;font-weight:600">19</td><td class="tc" style="color:#059669;font-weight:600">26</td><td class="tc" style="color:#059669;font-weight:600">25</td><td class="tc" style="color:#059669;font-weight:600">31</td>
+            </tr><tr class="">
+              <td class="rh fw">Lila Atkinson</td>
+              <td class="tc fw" style="color:#1E40AF">113</td>
+              <td class="tc" style="color:#059669">53</td>
+              <td class="tc fw" style="color:#D97706">46.9%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:10%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">10%</span>
+              </div></td>
+              <td class="tc" style="color:#059669;font-weight:600">20</td><td class="tc" style="color:#DC2626;font-weight:600">34</td><td class="tc" style="color:#D97706;font-weight:600">20</td><td class="tc" style="color:#DC2626;font-weight:600">22</td><td class="tc" style="color:#059669;font-weight:600">17</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Sylvia Eguia</td>
+              <td class="tc fw" style="color:#1E40AF">85</td>
+              <td class="tc" style="color:#059669">57</td>
+              <td class="tc fw" style="color:#059669">67.1%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:7%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">7%</span>
+              </div></td>
+              <td class="tc" style="color:#059669;font-weight:600">14</td><td class="tc" style="color:#059669;font-weight:600">28</td><td class="tc" style="color:#059669;font-weight:600">31</td><td class="tc" style="color:#059669;font-weight:600">12</td><td class="tc" style="color:#CBD5E1">—</td>
+            </tr><tr class="">
+              <td class="rh fw">Xavier Ruvalcaba</td>
+              <td class="tc fw" style="color:#1E40AF">62</td>
+              <td class="tc" style="color:#059669">29</td>
+              <td class="tc fw" style="color:#D97706">46.8%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:5%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">5%</span>
+              </div></td>
+              <td class="tc" style="color:#059669;font-weight:600">5</td><td class="tc" style="color:#059669;font-weight:600">15</td><td class="tc" style="color:#DC2626;font-weight:600">11</td><td class="tc" style="color:#DC2626;font-weight:600">10</td><td class="tc" style="color:#D97706;font-weight:600">21</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Ashley Villarreal</td>
+              <td class="tc fw" style="color:#1E40AF">59</td>
+              <td class="tc" style="color:#059669">28</td>
+              <td class="tc fw" style="color:#D97706">47.5%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:5%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">5%</span>
+              </div></td>
+              <td class="tc" style="color:#DC2626;font-weight:600">13</td><td class="tc" style="color:#D97706;font-weight:600">24</td><td class="tc" style="color:#059669;font-weight:600">16</td><td class="tc" style="color:#059669;font-weight:600">6</td><td class="tc" style="color:#CBD5E1">—</td>
+            </tr><tr class="">
+              <td class="rh fw">Marisol Garcia</td>
+              <td class="tc fw" style="color:#1E40AF">42</td>
+              <td class="tc" style="color:#059669">27</td>
+              <td class="tc fw" style="color:#059669">64.3%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:4%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">4%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#059669;font-weight:600">9</td><td class="tc" style="color:#059669;font-weight:600">33</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Guadalupe Ornelas</td>
+              <td class="tc fw" style="color:#1E40AF">40</td>
+              <td class="tc" style="color:#059669">22</td>
+              <td class="tc fw" style="color:#D97706">55.0%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:4%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">4%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#D97706;font-weight:600">40</td>
+            </tr><tr class="">
+              <td class="rh fw">Brianna Roel</td>
+              <td class="tc fw" style="color:#1E40AF">36</td>
+              <td class="tc" style="color:#059669">19</td>
+              <td class="tc fw" style="color:#D97706">52.8%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:3%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">3%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#059669;font-weight:600">10</td><td class="tc" style="color:#D97706;font-weight:600">26</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Yadira Gonzales</td>
+              <td class="tc fw" style="color:#1E40AF">8</td>
+              <td class="tc" style="color:#059669">7</td>
+              <td class="tc fw" style="color:#059669">87.5%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:1%;background:#DC2626;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">1%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#059669;font-weight:600">8</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td>
+            </tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- FACILITIES -->
+<div id="p-fac" style="display:none">
+  <div class="section-label">Facility performance</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="tblwrap">
+    <table class="bright-tbl">
+      <thead><tr>
+        <th class="rh">Facility</th><th class="tc">State</th><th class="tc">Received</th>
+        <th class="tc">Approved</th><th class="tc">Rate</th>
+        <th class="tc">NBP</th><th class="tc">PVT</th><th class="tc">PGX</th>
+      </tr></thead>
+      <tfoot><tr style="background:linear-gradient(90deg,#EFF6FF,#F0FDF4)"><td class="rh fw" style="color:#1E40AF">TOTAL</td><td class="tc fw">—</td><td class="tc fw">1,135</td><td class="tc fw" style="color:#059669">650</td><td class="tc fw" style="color:#059669">57.3%</td><td class="tc fw">—</td><td class="tc fw">—</td><td class="tc fw">—</td></tr></tfoot><tbody><tr class=""><td class="rh" style="color:#DC262660">Women's Clinic Of South Texas - Edinburg</td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">264</td><td class="tc" style="color:#059669;font-weight:600">161</td><td class="tc fw" style="color:#059669">61.0%</td><td class="tc">171</td><td class="tc">93</td><td class="tc">0</td></tr><tr class="row-alt fac-expandable" onclick="toggleHS('hs-panel-0', this)"><td class="rh" style="">Truhealth Family Clinic &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">221</td><td class="tc" style="color:#059669;font-weight:600">141</td><td class="tc fw" style="color:#059669">63.8%</td><td class="tc">135</td><td class="tc">69</td><td class="tc">17</td></tr><tr id="hs-panel-6" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#FAFBFF"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Yadira Garcia-Gonzalez</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">59</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">4</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Adapted workflow</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Testing volume has declined slightly since February but remains consistent overall. Ashley has been absent since March 31st.  Dr. Saavedra primarily sees returning patients, limiting new testing opportunities.  In April, PA Maria Gonzales-Garcia (Ms. Rosie) had several non-clinic days to complete notes, temporarily reducing patient volume. Additionally, Mika has been focused on training two new representatives and transitioning into Sales Account support responsibilities, affecting daily production capacity.  We have also focused on gathering insights and identifying opportunities to better integrate testing into the office workflow and processes.  Despite these factors, testing continues and the account remains active.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Highest overall volume account Recent decline due to:  Staff absence (since March 31) Provider mix (mostly returning patients) Training responsibilities reducing capacity    Focus:  Improving workflow integration Increasing PGx rates    👉 Takeaway: High-potential account with temporary operational drag.</div></div></div></div></td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-1', this)"><td class="rh" style="">Hania Medical Associates &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">137</td><td class="tc" style="color:#059669;font-weight:600">71</td><td class="tc fw" style="color:#D97706">51.8%</td><td class="tc">69</td><td class="tc">45</td><td class="tc">23</td></tr><tr id="hs-panel-5" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Yadira Garcia-Gonzalez</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">28</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">1</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">25</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">The higher volume of newborn testing and lower PGx is due to current patient demographics. We are seeing many younger, new patients who are not on qualifying medications, along with a large base of repeat patients who have already been screened for PGx.  I screen every patient and review medication lists, but many do not meet PGx criteria at this time. Additionally, overall patient volume at the clinic has been lower due to construction outside office, which is impacting walk in testing opportunities. Clinic leadership is aware and working to increase patient flow.  I remain focused on maximizing all eligible testing and anticipate improvement as patient volume increases.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Moderate–high screening volume, low PGx conversion [Deedee Acc...unt Review | Excel] Challenges:  Younger patients → not PGx eligible High repeat patient base Construction reducing patient traffic [Deedee Acc...unt Review | Excel]   Positive signals:  Providers and office management are supportive Strong GTS performance and development  GTS is coachable and HCP's are very happy with genetic testing services.  Office leadership mentioned all is flowing well. Takeaway: Performance limitations are largely demographic and external, not execution-related.</div></div></div></div></td></tr><tr class="row-alt fac-expandable" onclick="toggleHS('hs-panel-2', this)"><td class="rh" style="">Women's Clinic Of South Texas - Mcallen &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">135</td><td class="tc" style="color:#059669;font-weight:600">81</td><td class="tc fw" style="color:#059669">60.0%</td><td class="tc">91</td><td class="tc">44</td><td class="tc">0</td></tr><tr id="hs-panel-4" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#FAFBFF"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Yadira Garcia-Gonzalez</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">26</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">32</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Testing activity remains consistent, with strong utilization of Ambetter plans, which are largely being approved. However, there has been an observed increase in denials from BCBS, which may be impacting overall performance metrics.  Additionally, patient volume and testing opportunities have been affected over the past few months due to provider absences related to holidays, deliveries, and personal emergencies. This has also resulted in reduced GTS hours, as reflected in timesheets. Despite these challenges, Maria continues to stay engaged and focused on maximizing approved testing opportunities. There is an opportunity to further evaluate payer mix and denial trends to help optimize performance moving forward.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Consistent performance  Challenges:  Rising BCBS denials Provider absences reducing patient volume and GTS hours    Positive:  Strong Ambetter approval rates    Takeaway: Stable account with opportunity to optimize payer mix strategy.</div></div></div></div></td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-3', this)"><td class="rh" style="">Jk Sun Valley Healthcare Associates &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">124</td><td class="tc" style="color:#059669;font-weight:600">79</td><td class="tc fw" style="color:#059669">63.7%</td><td class="tc">83</td><td class="tc">31</td><td class="tc">10</td></tr><tr id="hs-panel-3" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Yadira Garcia-Gonzalez</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">23</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">10</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">49</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Root cause</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Workflow barrier</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">New GTS, Brianna Roel, has been training plus also provided training for GTS, Guadalupe. Workflow disruption due to internal changes with staff and space.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Recently, added new MA's and has been moving GTS around office given there is not a given area to operate from.  GTS's doing best to adapt to internal changes.  PRN, Sylvia, focused on training new GTS, Brianna, to her new role.</div></div></div></div></td></tr><tr class="row-alt fac-expandable" onclick="toggleHS('hs-panel-4', this)"><td class="rh" style="">Los Fresnos Medicine &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">113</td><td class="tc" style="color:#059669;font-weight:600">53</td><td class="tc fw" style="color:#D97706">46.9%</td><td class="tc">37</td><td class="tc">38</td><td class="tc">38</td></tr><tr id="hs-panel-2" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#FAFBFF"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Yadira Garcia-Gonzalez</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">15</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">7</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Root cause</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Low PGx Volume</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">The account flag should be viewed in the context of several operational and external factors impacting performance. The practice owner is currently managing two full-time locations without a mid-level provider in place, which has limited bandwidth for patient throughput and test utilization. In addition, ongoing staff turnover has contributed to workflow disruption and inconsistency in daily operations.  From a payer standpoint, coverage changes have also significantly impacted testing volume. Several insurance plans, including Molina, are no longer covering GeneID PGx testing, and certain BCBS HMO plans have introduced additional restrictions, resulting in increased denials and reduced test eligibility.  Despite these challenges, efforts continue to maximize eligible testing within current clinical and payer constraints.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Flagged account with multiple constraints [Deedee Acc...unt Review | Excel] Key issues:  Provider bandwidth (owner covering 2 locations) Staff turnover Insurance restrictions (e.g., Molina, BCBS HMO) reducing PGx eligibility [Deedee Acc...unt Review | Excel]   Action: Medical director to be replaced.  Upcoming meeting with owner + billing manager  👉 Takeaway: Performance impacted mostly by payer and operational barriers, not effort.</div></div></div></div></td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-5', this)"><td class="rh" style="">Gracepoint Urgent Care &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">43</td><td class="tc" style="color:#059669;font-weight:600">20</td><td class="tc fw" style="color:#D97706">46.5%</td><td class="tc">28</td><td class="tc">9</td><td class="tc">6</td></tr><tr id="hs-panel-1" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Yadira Garcia-Gonzalez</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">5</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">10</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Adapted workflow</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Balancing testing and implementing pilot program.  GTS, Xavier was able to help close one account and paperwork sent in for Last Call Urgent Care (is considered a family practice as well).  We anticipate closing two additional self referral prior to end of quarter.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Xavier continues to show strong commitment to his role as GTS and also has developed his sales skills too by implementing self referral program.  He assisted with closing Last Call Urgent Care plus is on schedule to close another account prior to end of May 2026.  In addition, he represented GeneID at a healthfare scheduled by Last Call Urgent Care setting up resources and adding value to our client.</div></div></div></div></td></tr><tr class="row-alt"><td class="rh" style="color:#DC262660">Gma Health And Wellness</td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">43</td><td class="tc" style="color:#059669;font-weight:600">16</td><td class="tc fw" style="color:#DC2626">37.2%</td><td class="tc">20</td><td class="tc">13</td><td class="tc">10</td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-6', this)"><td class="rh" style="">Rio Family Night Clinic &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">40</td><td class="tc" style="color:#059669;font-weight:600">22</td><td class="tc fw" style="color:#D97706">55.0%</td><td class="tc">21</td><td class="tc">8</td><td class="tc">11</td></tr><tr id="hs-panel-0" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Yadira Garcia-Gonzalez</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">New account started May 1st</div></div></div></div></td></tr><tr class="row-alt"><td class="rh" style="color:#DC262660">Last Call Urgent Care</td><td class="tc" style="color:#64748B">TX</td><td class="tc fw" style="color:#1E40AF">15</td><td class="tc" style="color:#059669;font-weight:600">6</td><td class="tc fw" style="color:#D97706">40.0%</td><td class="tc">5</td><td class="tc">5</td><td class="tc">5</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAYERS -->
+<div id="p-pay" style="display:none">
+  <div class="section-label">Payer approval rates</div>
+  <div class="g2">
+    <div class="card">
+      <div class="ct">Top payers — approval rate</div>
+      <div class="cw" style="height:230px"><canvas id="c-payer-bar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Payer breakdown</div>
+      <div class="tblwrap">
+      <table class="bright-tbl">
+        <thead><tr><th class="rh">Payer</th><th class="tc">Received</th><th class="tc">Approved</th><th class="tc">Rate</th></tr></thead>
+        <tbody><tr class="">
+              <td class="rh">Texas BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">627</td>
+              <td class="tc" style="color:#059669">377</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:60.1%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">60.1%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Ambetter TX</td>
+              <td class="tc fw" style="color:#1E40AF">116</td>
+              <td class="tc" style="color:#059669">72</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:62.1%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">62.1%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">Superior HealthPlan TX</td>
+              <td class="tc fw" style="color:#1E40AF">75</td>
+              <td class="tc" style="color:#059669">69</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:92.0%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">92.0%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Driscoll Health Plan TX</td>
+              <td class="tc fw" style="color:#1E40AF">53</td>
+              <td class="tc" style="color:#059669">19</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:35.8%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">35.8%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">Anthem BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">34</td>
+              <td class="tc" style="color:#059669">10</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:29.4%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">29.4%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Ambetter</td>
+              <td class="tc fw" style="color:#1E40AF">30</td>
+              <td class="tc" style="color:#059669">19</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:63.3%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">63.3%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">Federal BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">19</td>
+              <td class="tc" style="color:#059669">2</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:10.5%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">10.5%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">California BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">17</td>
+              <td class="tc" style="color:#059669">13</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:76.5%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">76.5%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">Molina Healthcare TX</td>
+              <td class="tc fw" style="color:#1E40AF">16</td>
+              <td class="tc" style="color:#059669">7</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:43.8%;background:#D97706;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#D97706;width:38px;text-align:right">43.8%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Medicare</td>
+              <td class="tc fw" style="color:#1E40AF">15</td>
+              <td class="tc" style="color:#059669">12</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:80.0%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">80.0%</span>
+                </div>
+              </td>
+            </tr></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const ML=["Jan", "Feb", "Mar", "Apr", "May"];
+const MONTHLY=[{"received":142,"approved":72,"appr_rate":50.7,"nbp":81,"pvt":44,"pgx":17,"facilities":7,"gts_active":8},{"received":293,"approved":165,"appr_rate":56.3,"nbp":171,"pvt":93,"pgx":29,"facilities":8,"gts_active":9},{"received":262,"approved":161,"appr_rate":61.5,"nbp":163,"pvt":79,"pgx":20,"facilities":8,"gts_active":8},{"received":197,"approved":117,"appr_rate":59.4,"nbp":112,"pvt":64,"pgx":21,"facilities":8,"gts_active":10},{"received":241,"approved":135,"appr_rate":56.0,"nbp":133,"pvt":75,"pgx":33,"facilities":9,"gts_active":9}];
+const GTS_DATA=[{"name":"Selena Lopez","received":259,"approved":160,"appr_rate":61.8,"facilities":1,"states":1,"nbp":168,"pvt":91,"pgx":0,"monthly":[[36,20,55.6],[64,35,54.7],[71,48,67.6],[43,28,65.1],[45,29,64.4]]},{"name":"Mika Vento","received":167,"approved":103,"appr_rate":61.7,"facilities":2,"states":1,"nbp":101,"pvt":50,"pgx":16,"monthly":[[2,1,50.0],[78,49,62.8],[51,27,52.9],[35,26,74.3],[1,0,0.0]]},{"name":"Jocelyn Aleman","received":134,"approved":69,"appr_rate":51.5,"facilities":2,"states":1,"nbp":68,"pvt":44,"pgx":22,"monthly":[[23,12,52.2],[23,15,65.2],[36,21,58.3],[25,11,44.0],[27,10,37.0]]},{"name":"Maria Lopez","received":130,"approved":76,"appr_rate":58.5,"facilities":1,"states":1,"nbp":88,"pvt":42,"pgx":0,"monthly":[[29,9,31.0],[19,13,68.4],[26,18,69.2],[25,14,56.0],[31,22,71.0]]},{"name":"Lila Atkinson","received":113,"approved":53,"appr_rate":46.9,"facilities":1,"states":1,"nbp":37,"pvt":38,"pgx":38,"monthly":[[20,14,70.0],[34,10,29.4],[20,11,55.0],[22,8,36.4],[17,10,58.8]]},{"name":"Sylvia Eguia","received":85,"approved":57,"appr_rate":67.1,"facilities":1,"states":1,"nbp":55,"pvt":23,"pgx":7,"monthly":[[14,11,78.6],[28,16,57.1],[31,21,67.7],[12,9,75.0],null]},{"name":"Xavier Ruvalcaba","received":62,"approved":29,"appr_rate":46.8,"facilities":3,"states":1,"nbp":35,"pvt":15,"pgx":12,"monthly":[[5,3,60.0],[15,10,66.7],[11,3,27.3],[10,3,30.0],[21,10,47.6]]},{"name":"Ashley Villarreal","received":59,"approved":28,"appr_rate":47.5,"facilities":3,"states":1,"nbp":33,"pvt":16,"pgx":10,"monthly":[[13,2,15.4],[24,10,41.7],[16,12,75.0],[6,4,66.7],null]},{"name":"Marisol Garcia","received":42,"approved":27,"appr_rate":64.3,"facilities":1,"states":1,"nbp":25,"pvt":17,"pgx":0,"monthly":[null,null,null,[9,7,77.8],[33,20,60.6]]},{"name":"Guadalupe Ornelas","received":40,"approved":22,"appr_rate":55.0,"facilities":1,"states":1,"nbp":21,"pvt":8,"pgx":11,"monthly":[null,null,null,null,[40,22,55.0]]},{"name":"Brianna Roel","received":36,"approved":19,"appr_rate":52.8,"facilities":1,"states":1,"nbp":25,"pvt":8,"pgx":3,"monthly":[null,null,null,[10,7,70.0],[26,12,46.2]]},{"name":"Yadira Gonzales","received":8,"approved":7,"appr_rate":87.5,"facilities":2,"states":1,"nbp":4,"pvt":3,"pgx":1,"monthly":[null,[8,7,87.5],null,null,null]}];
+const COL='#DC2626';
+let CH={};
+function kc(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+function go(t){
+  ['ov','gts','fac','pay'].forEach(id=>document.getElementById('p-'+id).style.display=id===t?'':'none');
+  document.querySelectorAll('.ntab').forEach((el,i)=>el.classList.toggle('on',['ov','gts','fac','pay'][i]===t));
+  if(t==='gts')renderGTS();
+  if(t==='pay')renderPayer();
+}
+function renderOV(){
+  const recv=MONTHLY.map(m=>m?m.received:0);
+  const appr=MONTHLY.map(m=>m?m.approved:0);
+  const rates=MONTHLY.map(m=>m?m.appr_rate:null);
+  kc('trend');CH['trend']=new Chart(document.getElementById('c-trend'),{type:'bar',
+    data:{labels:ML,datasets:[
+      {label:'Received',data:recv,backgroundColor:COL+'44',borderColor:COL,borderWidth:1.5},
+      {label:'Approved',data:appr,backgroundColor:COL+'CC'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:9},boxWidth:9}},tooltip:{mode:'index'}},
+    scales:{x:{ticks:{font:{size:10},autoSkip:false}},y:{ticks:{font:{size:10}}}}}
+  });
+  const pmix={"NBP":660,"PVT":355,"PGX":120};
+  const pmK=Object.keys(pmix),pmV=Object.values(pmix),pmT=pmV.reduce((a,b)=>a+b,0)||1;
+  const pmC=['#378ADD','#1D9E75','#7F77DD'];
+  document.getElementById('pm-leg').innerHTML=pmK.map((l,i)=>'<span><span class="lsq" style="background:'+pmC[i]+'"></span>'+l+' '+Math.round(pmV[i]/pmT*100)+'%</span>').join('');
+  kc('pmix');CH['pmix']=new Chart(document.getElementById('c-pmix'),{type:'doughnut',
+    data:{labels:pmK,datasets:[{data:pmV,backgroundColor:pmC,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}
+  });
+  kc('rate');CH['rate']=new Chart(document.getElementById('c-rate'),{type:'line',
+    data:{labels:ML,datasets:[{label:'Approval rate %',data:rates,borderColor:COL,backgroundColor:COL+'18',
+      tension:0.4,fill:true,pointRadius:5,pointBackgroundColor:COL,pointBorderColor:'#fff',pointBorderWidth:2,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{font:{size:10},autoSkip:false}},y:{ticks:{font:{size:10},callback:v=>v+'%'}}}}
+  });
+}
+function renderGTS(){
+  if(CH['gts-bar'])return;
+  const shortNames=GTS_DATA.map(g=>g.name.split(' ').slice(0,2).join(' '));
+  kc('gts-bar');CH['gts-bar']=new Chart(document.getElementById('c-gts-bar'),{type:'bar',
+    data:{labels:shortNames,datasets:[
+      {label:'Approved',data:GTS_DATA.map(g=>g.approved),backgroundColor:COL+'CC'},
+      {label:'Unapproved',data:GTS_DATA.map(g=>g.received-g.approved),backgroundColor:'#E2E8F066'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:9},boxWidth:9}},tooltip:{mode:'index'}},
+    scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{ticks:{font:{size:9}}}}}
+  });
+  kc('gts-rate');CH['gts-rate']=new Chart(document.getElementById('c-gts-rate'),{type:'bar',
+    data:{labels:shortNames,datasets:[{label:'Approval %',data:GTS_DATA.map(g=>g.appr_rate),
+      backgroundColor:GTS_DATA.map(g=>g.appr_rate>=60?'#059669CC':g.appr_rate>=45?COL+'CC':'#DC2626CC')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{ticks:{font:{size:9},callback:v=>v+'%'},max:100}}}
+  });
+}
+function renderPayer(){
+  if(CH['payer-bar'])return;
+  const PAYERS=[{"payer":"Texas BCBS","received":627,"approved":377,"appr_rate":60.1},{"payer":"Ambetter TX","received":116,"approved":72,"appr_rate":62.1},{"payer":"Superior HealthPlan TX","received":75,"approved":69,"appr_rate":92.0},{"payer":"Driscoll Health Plan TX","received":53,"approved":19,"appr_rate":35.8},{"payer":"Anthem BCBS","received":34,"approved":10,"appr_rate":29.4},{"payer":"Ambetter","received":30,"approved":19,"appr_rate":63.3},{"payer":"Federal BCBS","received":19,"approved":2,"appr_rate":10.5},{"payer":"California BCBS","received":17,"approved":13,"appr_rate":76.5},{"payer":"Molina Healthcare TX","received":16,"approved":7,"appr_rate":43.8},{"payer":"Medicare","received":15,"approved":12,"appr_rate":80.0}];
+  kc('payer-bar');CH['payer-bar']=new Chart(document.getElementById('c-payer-bar'),{type:'bar',
+    data:{labels:PAYERS.map(p=>p.payer.length>20?p.payer.slice(0,18)+'…':p.payer),
+      datasets:[{label:'Approval rate',data:PAYERS.map(p=>p.appr_rate),
+        backgroundColor:PAYERS.map(p=>p.appr_rate>=60?'#059669CC':p.appr_rate>=45?COL+'CC':'#DC2626CC')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{font:{size:9},maxRotation:40}},y:{ticks:{font:{size:9},callback:v=>v+'%'},max:100}}}
+  });
+}
+renderOV();
+</script>
+</body></html>
